@@ -4,14 +4,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Z-Royale 2D</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Fuente futurista de Google Fonts -->
+    <!-- Fuente futurista -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #05050a;
+            color: #00ffcc;
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas {
+            background: radial-gradient(circle, #0b1329 0%, #020408 100%);
+            border: 3px solid #00ffcc;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.4), inset 0 0 15px rgba(0, 255, 204, 0.2);
+            border-radius: 6px;
+            cursor: crosshair;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            gap: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 700;
+            z-index: 10;
+            border: 1px solid #00ffcc;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+        }
+
+        .stat-box {
+            text-shadow: 0 0 5px #00ffcc;
+        }
+
+        #message-screen {
+            position: absolute;
+            background: rgba(5, 8, 20, 0.95);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #ff007f;
+            box-shadow: 0 0 30px rgba(255, 0, 127, 0.5);
+            z-index: 20;
+            max-width: 450px;
+        }
+
+        #message-screen h1 {
+            margin-bottom: 15px;
+            color: #ff007f;
+            font-size: 28px;
+            text-shadow: 0 0 10px #ff007f;
+        }
+
+        #message-screen p {
+            margin-bottom: 25px;
+            line-height: 1.6;
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        #start-btn {
+            background: linear-gradient(45deg, #ff007f, #7928ca);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            font-size: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        #start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.9);
+        }
+    </style>
 </head>
 <body>
     <div id="ui">
         <div class="stat-box">❤️ <span id="health">100</span></div>
-        <div class="stat-box">🔋 <span id="ammo">15</span></div>
+        <div class="stat-box">🔋 <span id="ammo">20</span></div>
         <div class="stat-box">🧟 <span id="zombiesCount">0</span></div>
         <div class="stat-box">⏱️ <span id="timer">60</span>s</div>
     </div>
@@ -24,6 +113,304 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <script src="script.js"></script>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = 850;
+        canvas.height = 520;
+
+        const healthEl = document.getElementById("health");
+        const ammoEl = document.getElementById("ammo");
+        const zombiesCountEl = document.getElementById("zombiesCount");
+        const timerEl = document.getElementById("timer");
+        const messageScreen = document.getElementById("message-screen");
+        const gameTitle = document.getElementById("game-title");
+        const gameInstructions = document.getElementById("game-instructions");
+        const startBtn = document.getElementById("start-btn");
+
+        let gameRunning = false;
+        let scoreTimer = 60;
+        let timerInterval;
+        let itemInterval;
+
+        let player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 14,
+            speed: 3.5,
+            health: 100,
+            ammo: 20
+        };
+
+        let keys = {};
+        let mouse = { x: 0, y: 0 };
+
+        let bullets = [];
+        let zombies = [];
+        let items = [];
+        let particles = [];
+
+        window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
+        window.addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
+
+        canvas.addEventListener("mousemove", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener("click", () => {
+            if (!gameRunning) return;
+            if (player.ammo > 0) {
+                player.ammo--;
+                ammoEl.innerText = player.ammo;
+                
+                let angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(angle) * 9,
+                    vy: Math.sin(angle) * 9,
+                    radius: 3.5
+                });
+            }
+        });
+
+        startBtn.addEventListener("click", startGame);
+
+        function startGame() {
+            messageScreen.style.display = "none";
+            gameRunning = true;
+            player.health = 100;
+            player.ammo = 20;
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            bullets = [];
+            zombies = [];
+            items = [];
+            particles = [];
+            scoreTimer = 60;
+
+            healthEl.innerText = player.health;
+            ammoEl.innerText = player.ammo;
+
+            for (let i = 0; i < 7; i++) {
+                spawnZombie();
+            }
+
+            clearInterval(itemInterval);
+            itemInterval = setInterval(spawnBattery, 6000);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                scoreTimer--;
+                timerEl.innerText = scoreTimer;
+                if (scoreTimer <= 0) {
+                    endGame(true);
+                }
+            }, 1000);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnZombie() {
+            let edge = Math.floor(Math.random() * 4);
+            let zx, zy;
+            if (edge === 0) { zx = Math.random() * canvas.width; zy = -25; }
+            else if (edge === 1) { zx = Math.random() * canvas.width; zy = canvas.height + 25; }
+            else if (edge === 2) { zx = -25; zy = Math.random() * canvas.height; }
+            else { zx = canvas.width + 25; zy = Math.random() * canvas.height; }
+
+            zombies.push({
+                x: zx,
+                y: zy,
+                radius: 13,
+                speed: 1.4 + Math.random() * 0.7,
+                health: 2
+            });
+        }
+
+        function spawnBattery() {
+            items.push({
+                x: Math.random() * (canvas.width - 80) + 40,
+                y: Math.random() * (canvas.height - 80) + 40,
+                radius: 9
+            });
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 6; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 2 + 1;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 25,
+                    color: color
+                });
+            }
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            if ((keys['w'] || keys['W']) && player.y > player.radius) player.y -= player.speed;
+            if ((keys['s'] || keys['S']) && player.y < canvas.height - player.radius) player.y += player.speed;
+            if ((keys['a'] || keys['A']) && player.x > player.radius) player.x -= player.speed;
+            if ((keys['d'] || keys['D']) && player.x < canvas.width - player.radius) player.x += player.speed;
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                for (let j = zombies.length - 1; j >= 0; j--) {
+                    let z = zombies[j];
+                    let dist = Math.hypot(b.x - z.x, b.y - z.y);
+                    if (dist < b.radius + z.radius) {
+                        z.health--;
+                        createExplosion(b.x, b.y, "#00ffcc");
+                        bullets.splice(i, 1);
+                        if (z.health <= 0) {
+                            createExplosion(z.x, z.y, "#ff007f");
+                            zombies.splice(j, 1);
+                            setTimeout(spawnZombie, 1800);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            for (let z of zombies) {
+                let angle = Math.atan2(player.y - z.y, player.x - z.x);
+                z.x += Math.cos(angle) * z.speed;
+                z.y += Math.sin(angle) * z.speed;
+
+                let dist = Math.hypot(player.x - z.x, player.y - z.y);
+                if (dist < player.radius + z.radius) {
+                    player.health -= 0.6;
+                    healthEl.innerText = Math.max(0, Math.floor(player.health));
+                    if (player.health <= 0) {
+                        endGame(false);
+                    }
+                }
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                let item = items[i];
+                let dist = Math.hypot(player.x - item.x, player.y - item.y);
+                if (dist < player.radius + item.radius) {
+                    player.ammo += 12;
+                    ammoEl.innerText = player.ammo;
+                    items.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            zombiesCountEl.innerText = zombies.length;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "rgba(0, 255, 204, 0.04)";
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            for (let item of items) {
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = "#ffeb3b";
+                ctx.fillStyle = "#ffeb3b";
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.shadowBlur = 6;
+            for (let p of particles) {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#00ffcc";
+            ctx.fillStyle = "#00ffcc";
+            for (let b of bullets) {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.shadowColor = "#ff0055";
+            ctx.fillStyle = "#ff0055";
+            for (let z of zombies) {
+                ctx.beginPath();
+                ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.shadowColor = "#00bfff";
+            ctx.fillStyle = "#00bfff";
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            let angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+            ctx.strokeStyle = "rgba(0, 255, 204, 0.8)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(player.x + Math.cos(angle) * 25, player.y + Math.sin(angle) * 25);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (gameRunning) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function endGame(victory) {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            clearInterval(itemInterval);
+
+            messageScreen.style.display = "block";
+            if (victory) {
+                gameTitle.innerText = "¡SISTEMA ASEGURADO! 🏆";
+                gameInstructions.innerText = "Lograste sobrevivir al asalto zombi cibernético.";
+            } else {
+                gameTitle.innerText = "¡CONEXIÓN PERDIDA! 💀";
+                gameInstructions.innerText = "Tu armadura cedió ante la horda. Inténtalo otra vez.";
+            }
+            startBtn.innerText = "REINICIAR SISTEMA";
+        }
+    </script>
 </body>
 </html>
