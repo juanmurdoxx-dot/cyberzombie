@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Z-Royale 2D</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Fuente futurista de Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="ui">
+        <div class="stat-box">❤️ <span id="health">100</span></div>
+        <div class="stat-box">🔋 <span id="ammo">15</span></div>
+        <div class="stat-box">🧟 <span id="zombiesCount">0</span></div>
+        <div class="stat-box">⏱️ <span id="timer">60</span>s</div>
+    </div>
+
+    <div id="message-screen">
+        <h1 id="game-title">CYBER Z-ROYALE</h1>
+        <p id="game-instructions">Sobrevive al brote cibernético.<br>Usa <b>W, A, S, D</b> para moverte.<br>Usa el <b>MOUSE</b> para apuntar y <b>CLICK</b> para disparar.<br>Recolecta baterías de plasma antes de que acabe el tiempo.</p>
+        <button id="start-btn">INICIALIZAR SISTEMA</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="script.js"></script>
+</body>
+</html>
